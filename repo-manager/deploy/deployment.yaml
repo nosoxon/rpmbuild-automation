@@ -1,0 +1,89 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: repo-manager
+  namespace: core-repo
+  annotations:
+    cert-manager.io/cluster-issuer: cluster-issuer
+spec:
+  rules:
+  - host: repo.laboutpost.net
+    http:
+      paths:
+      - path: /
+        pathType: ImplementationSpecific
+        backend: { service: { name: repo-manager, port: { number: 80 } } }
+  tls:
+  - hosts: [ repo.laboutpost.net ]
+    secretName: tls-repo
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: repo-manager
+  namespace: core-repo
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: repo-manager
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: repo-manager
+  namespace: core-repo
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: repo-manager
+  template:
+    metadata:
+      labels:
+        app: repo-manager
+    spec:
+      imagePullSecrets:
+      - name: registry.thrymgjol.io
+      containers:
+      - name: web-server
+        image: {{image_path}}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LISTEN_ADDRESS
+          value: ":8080"
+        - name: REPO_ROOT
+          value: "/repo"
+        - name: AUTH_SECRET
+          valueFrom:
+            secretKeyRef: { name: core-repo, key: auth-secret }
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - mountPath: /repo
+          name: repo-data
+      volumes:
+      - name: repo-data
+        persistentVolumeClaim:
+          claimName: repo-data
+

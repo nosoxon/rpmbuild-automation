@@ -1,0 +1,19 @@
+#!/bin/bash -e
+
+build_dir="$1"/build
+secret="$2"
+uri="http://repo-manager.core-repo.svc.k8s.laboutpost.net/addpkgs"
+
+echo "Uploading to repository"
+
+declare -a rpms
+mapfile -t rpms < <(find "$build_dir" -name '*.rpm')
+
+rpmparams=$(printf -- '-F pkg=@%s ' "${rpms[@]}")
+curl -X POST "$uri" $rpmparams -H "x-auth: $secret" -o /tmp/result.log
+
+printf '\n\n\e[1;38;5;%sm%s\e[0m\n' 111 '==> stdout'
+jq -r .result.output /tmp/result.log
+printf '\n\n\e[1;38;5;%sm%s\e[0m\n' 160 '==> stderr'
+jq -r .result.error /tmp/result.log
+printf '\n\n\e[1;38;5;%sm==> exit [%s]\e[0m\n' 226 $(jq -r .result.status /tmp/result.log)

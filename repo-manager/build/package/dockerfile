@@ -1,0 +1,21 @@
+FROM golang:alpine AS gobuilder
+
+WORKDIR $GOPATH/src/repo-manager
+COPY . ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo \
+    -ldflags "-s -w" \
+    -o /repo-manager ./cmd/repo-manager
+
+FROM alpine:3.15.0 AS builder
+
+COPY build/package/createrepo_c-0.17.7-r0.apk build/package/createrepo_c-libs-0.17.7-r0.apk /root/
+COPY build/package/quarantine.sh /
+RUN apk add bash && apk add --allow-untrusted /root/createrepo_c-0.17.7-r0.apk /root/createrepo_c-libs-0.17.7-r0.apk && bash /quarantine.sh
+
+FROM scratch
+
+COPY --from=builder /slice/ /
+COPY --from=gobuilder /repo-manager /repo-manager
+COPY --from=gobuilder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+CMD ["/repo-manager"]

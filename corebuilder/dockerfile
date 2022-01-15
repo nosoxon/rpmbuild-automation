@@ -1,0 +1,16 @@
+FROM docker.io/rockylinux:9
+
+RUN dnf install -y \
+		gcc gcc-c++ make jq \
+		rpm-build rpmdevtools \
+		'dnf-command(builddep)' \
+		'dnf-command(config-manager)' \
+	&& dnf config-manager --enable crb \
+	&& dnf upgrade -y
+COPY rpmmacros /root/.rpmmacros
+
+COPY build-rpms /bin/build-rpms
+COPY upload-rpms /bin/upload-rpms
+COPY outpost.repo /etc/yum.repos.d
+RUN chmod +x /bin/build-rpms /bin/upload-rpms
+ENTRYPOINT [""]

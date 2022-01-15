@@ -1,0 +1,40 @@
+#!/bin/bash -e
+
+function dov {
+	printf "\n\e[1m> %s\e[0m\n" "$*"
+	"$@"
+}
+
+function set_topdir {
+	sed -i "s|%_topdir.*|%_topdir $1|" /root/.rpmmacros
+}
+
+function set_dist {
+	sed -i "s|%dist.*|%dist $1|" /etc/rpm/macros.dist
+}
+
+project_dir="$1"
+build_dir="$project_dir"/build
+
+declare -a specs sources
+mapfile -t specs < <(find "$project_dir" -type f ! -regex '.*/.git.*' -name '*.spec')
+mapfile -t sources < <(find "$project_dir" -type f ! -regex '.*/.git.*' ! -name '*.spec' ! -name 'sources')
+
+mkdir -p "$build_dir"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+
+for spec in "${specs[@]}"; do
+	cp -v "$spec" "$build_dir"/SPECS
+done
+
+for source in "${sources[@]}"; do
+	cp -v "$source" "$build_dir"/SOURCES
+done
+
+set_dist .el9.core
+set_topdir "$build_dir"
+
+for spec in "$build_dir"/SPECS/*.spec; do
+	dov spectool --get-files --sourcedir "$spec"
+	dov dnf builddep --nogpgcheck --setopt=appstream.module_hotfixes=true --nobest --assumeyes "$spec"
+	dov rpmbuild -ba "$spec"
+done

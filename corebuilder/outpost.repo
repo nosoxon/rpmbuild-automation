@@ -1,0 +1,4 @@
+[laboutpost]
+name=laboutpost
+baseurl=http://repo-manager.core-repo.svc.k8s.laboutpost.net/repo/
+enabled=1

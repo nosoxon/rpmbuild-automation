@@ -1,0 +1,21 @@
+stages:
+- build
+
+workflow:
+  rules:
+  - if: '$CI_COMMIT_BRANCH == "master"'
+
+variables:
+  CONTAINER_BASE: reg.laboutpost.net/$CI_PROJECT_PATH
+  CONTAINER_IMAGE: $CONTAINER_BASE:$CI_COMMIT_SHORT_SHA
+
+build:
+  stage: build
+  image: reg.laboutpost.net/gitlab/kaniko-executor:debug
+  script:
+  - >-
+    /kaniko/executor
+    --context $CI_PROJECT_DIR
+    --dockerfile $CI_PROJECT_DIR/dockerfile
+    --destination $CONTAINER_IMAGE
+    --destination $CONTAINER_BASE:fresh

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+pkgs=(
+	gcc gcc-c++ make
+	rpm-build rpmdevtools
+)
+
+dnf install -y gcc gcc-c++ make rpm-build rpmdevtools
+
+# Enable PowerTools
+perl -i -pe 's|(?<=enabled=)0|1|g' /etc/yum.repos.d/CentOS-Stream-PowerTools.repo
+
+# Initialize RPM build root
+mv -v /tmp/rpmmacros /root/.rpmmacros
+mkdir -vp /build/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+
+exit 0
